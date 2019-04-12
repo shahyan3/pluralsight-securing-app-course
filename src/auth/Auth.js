@@ -4,6 +4,10 @@ export default class Auth {
   // we will pass in react routers history obj so auth can perform redirects
   constructor(history) {
     this.history = history;
+
+    // user's profile
+    this.userProfile = null;
+
     // new auth0 instance
     this.auth0 = new auth0.WebAuth({
       domain: process.env.REACT_APP_AUTH0_DOMAIN,
@@ -60,4 +64,33 @@ export default class Auth {
     const expiresAt = JSON.parse(localStorage.getItem("expires_at"));
     return new Date().getTime() < expiresAt;
   }
+  logout = () => {
+    // removing local data logging out
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("id_token");
+    localStorage.removeItem("expires_at");
+
+    this.userProfile = null;
+
+    // removing auth0 cookie and logging auth0 out
+    this.auth0.logout({
+      clientID: process.env.REACT_APP_AUTH0_CLIENTID,
+      returnTo: "http://localhost:3000"
+    });
+  };
+
+  getAccessToken = () => {
+    const accessToken = localStorage.getItem("access_token");
+    if (!accessToken) {
+      throw new Error("access token not found!");
+    }
+    return accessToken;
+  };
+  getProfile = cb => {
+    if (this.userProfile) return cb(this.userProfile);
+    this.auth0.client.userInfo(this.getAccessToken(), (err, profile) => {
+      if (profile) this.userProfile = profile;
+      cb(profile, err);
+    });
+  };
 }
